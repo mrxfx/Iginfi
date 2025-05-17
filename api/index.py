@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 import instaloader
@@ -5,9 +6,13 @@ import instaloader
 app = FastAPI()
 
 @app.get("/")
-def read_root(username: str = Query(..., description="Instagram username")):
+def read_root(username: str = Query(...)):
     try:
         L = instaloader.Instaloader()
+        IG_USER = os.getenv("IG_USER")
+        IG_PASS = os.getenv("IG_PASS")
+        L.login(IG_USER, IG_PASS)
+
         profile = instaloader.Profile.from_username(L.context, username)
 
         data = {
