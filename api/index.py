@@ -1,33 +1,28 @@
 import os
+import instaloader
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
-import instaloader
 
 app = FastAPI()
 
 @app.get("/")
-def read_root(username: str = Query(...)):
+def download_reel(url: str = Query(..., description="URL of the Instagram reel")):
     try:
-        L = instaloader.Instaloader()
-        IG_USER = os.getenv("IG_USER")
-        IG_PASS = os.getenv("IG_PASS")
-        L.login(IG_USER, IG_PASS)
+        shortcode = url.strip("/").split("/")[-1]
+        L = instaloader.Instaloader(dirname_pattern="downloads/{target}", filename_pattern="{shortcode}", download_video_thumbnails=False, download_comments=False)
+        post = instaloader.Post.from_shortcode(L.context, shortcode)
 
-        profile = instaloader.Profile.from_username(L.context, username)
+        if post.typename != "GraphVideo":
+            return JSONResponse(content={"error": "Provided URL is not a reel or video."}, status_code=400)
 
-        data = {
-            "username": profile.username,
-            "full_name": profile.full_name,
-            "bio": profile.biography,
-            "followers": profile.followers,
-            "following": profile.followees,
-            "posts": profile.mediacount,
-            "is_private": profile.is_private,
-            "is_verified": profile.is_verified,
-            "external_url": profile.external_url,
+        L.download_post(post, target=post.owner_username)
+
+        return {
+            "message": "Reel downloaded successfully.",
+            "username": post.owner_username,
+            "shortcode": shortcode,
+            "title": post.title,
+            "video_url": post.video_url
         }
-
-        return JSONResponse(content=data)
-
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
