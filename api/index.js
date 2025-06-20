@@ -11,29 +11,43 @@ app.use(express.json());
 
 // Sample route for Instagram Reel, Post, Story, Photo and Profile Downloader
 app.get('/api/download', async (req, res) => {
-    const { url } = req.query;
-    if (!url || !url.includes('instagram.com')) {
-        return res.status(400).json({ error: 'Invalid URL' });
-    }
-    try {
-        const { data } = await axios.get(url);
-        const $ = cheerio.load(data);
-        const scriptTag = $('script[type="application/ld+json"]').html();
-        if (scriptTag) {
-            const jsonData = JSON.parse(scriptTag);
-            return res.json({ media: jsonData });
-        }
-        res.status(404).json({ error: 'Media not found' });
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch media' });
-    }
-});
+  const { url } = req.query;
+  if (!url || !url.includes('instagram.com')) {
+    return res.status(400).json({ error: 'Invalid Instagram URL' });
+  }
 
-app.get('/', (req, res) => {
-    res.send('Instagram Downloader API is running.');
-});
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+      }
+    });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    const $ = cheerio.load(response.data);
+    const meta = {};
+
+    $('meta').each((_, el) => {
+      const property = $(el).attr('property') || $(el).attr('name');
+      const content = $(el).attr('content');
+      if (property && content && property.startsWith('og:')) {
+        meta[property] = content;
+      }
+    });
+
+    if (!meta['og:image'] && !meta['og:video']) {
+      return res.status(404).json({ error: 'Media not found' });
+    }
+
+    return res.json({
+      type: meta['og:type'],
+      title: meta['og:title'],
+      image: meta['og:image'],
+      video: meta['og:video'],
+      url: meta['og:url']
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Failed to fetch Instagram content' });
+  }
 });
