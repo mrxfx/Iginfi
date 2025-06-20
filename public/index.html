@@ -1,0 +1,38 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Instagram Downloader</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 40px; background: #fafafa; }
+    input, button { padding: 10px; font-size: 1em; width: 80%; max-width: 400px; margin: 10px auto; }
+    .preview img, .preview video { max-width: 100%; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>📥 Instagram Downloader</h1>
+  <input type="text" id="urlInput" placeholder="Paste Instagram URL (Reel/Post/Story)" />
+  <button onclick="download()">Download</button>
+  <div class="preview" id="preview"></div>
+
+  <script>
+    async function download() {
+      const url = document.getElementById("urlInput").value;
+      const response = await fetch("/api/download?url=" + encodeURIComponent(url));
+      const data = await response.json();
+      const preview = document.getElementById("preview");
+      if (data.error) {
+        preview.innerHTML = "<p style='color:red'>" + data.error + "</p>";
+      } else if (data.media) {
+        preview.innerHTML = data.media.endsWith(".mp4")
+          ? "<video controls src='" + data.media + "'></video>"
+          : "<img src='" + data.media + "' />";
+      } else if (data.thumbnail) {
+        preview.innerHTML = "<img src='" + data.thumbnail + "' />";
+      }
+    }
+  </script>
+</body>
+</html>
